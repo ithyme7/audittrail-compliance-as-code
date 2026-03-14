@@ -140,6 +140,14 @@ Pitch-ready chart:
 ```bash
 python generate_pitch_chart.py
 ```
+
+## Demo Dashboard (Streamlit)
+
+```bash
+pip install streamlit pandas
+cd demo
+streamlit run dashboard.py
+```
 ## Async vs Sync logging
 
 By default, logging is async via a background worker thread.
