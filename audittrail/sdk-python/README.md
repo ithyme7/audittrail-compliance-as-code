@@ -2,6 +2,15 @@
 
 Compliance-as-Code SDK for EU AI Act readiness. This MVP traces training and inference, computes fairness metrics, and exports audit-ready reports.
 
+**Why AuditTrail**
+- 2 decorators to make models audit‑proof
+- Tamper‑evident logs with hash‑chain integrity
+- Async batching for high‑throughput logging
+
+**Design Partners**
+We’re looking for 2–3 teams building high‑risk AI systems in the EU.  
+If you want early access + roadmap influence, open a GitHub issue in this repo with a short intro.
+
 ## Installation
 
 Editable install from the repo:
