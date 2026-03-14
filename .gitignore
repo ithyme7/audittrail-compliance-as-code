@@ -20,6 +20,15 @@ build/
 audit_logs/
 demo_output/
 **/demo_output/
+benchmark_results.csv
+benchmark_plot.png
+pitch_ready_chart.png
+
+# Local-only docs
+connect_note_templates.md
+linkedin_search_queries.md
+outreach_tracking_sheet.md
+pitch_deck.md
 
 # OS
 .DS_Store
