@@ -148,6 +148,22 @@ pip install streamlit pandas
 cd demo
 streamlit run dashboard.py
 ```
+
+## FastAPI Demo
+
+```bash
+pip install fastapi uvicorn
+cd demo
+uvicorn server:app --reload
+```
+
+## PDF Exporter (Demo)
+
+```bash
+pip install reportlab
+cd demo
+python pdf_exporter.py ./demo_output/<your_report>.json
+```
 ## Async vs Sync logging
 
 By default, logging is async via a background worker thread.
