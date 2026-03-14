@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Packaging
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Logs / outputs
+audit_logs/
+demo_output/
+
+# OS
+.DS_Store
+Thumbs.db
