@@ -38,6 +38,7 @@ def test_trace_training_creates_log_file(temp_audit_dir):
         return {"ok": True}
 
     train()
+    audittrail.flush()
     assert os.path.exists(_log_path(temp_audit_dir))
 
 
@@ -47,6 +48,7 @@ def test_trace_training_log_format(temp_audit_dir):
         return {"ok": True}
 
     train()
+    audittrail.flush()
     entries = _read_entries(_log_path(temp_audit_dir))
     first = entries[0]
     for key in ["timestamp", "event_type", "trace_id", "project", "hash", "previous_hash"]:
@@ -59,6 +61,7 @@ def test_trace_id_consistent_within_run(temp_audit_dir):
         return {"ok": True}
 
     train()
+    audittrail.flush()
     entries = _read_entries(_log_path(temp_audit_dir))
     trace_ids = {e["trace_id"] for e in entries}
     assert len(trace_ids) == 1
@@ -72,6 +75,7 @@ def test_git_commit_detection(temp_audit_dir):
     with mock.patch("audittrail.tracer.subprocess.run") as mocked:
         mocked.return_value = mock.Mock(stdout="abc123\n")
         train()
+    audittrail.flush()
 
     entries = _read_entries(_log_path(temp_audit_dir))
     training_end = [e for e in entries if e["event_type"] == "training_end"][-1]
@@ -85,6 +89,7 @@ def test_git_commit_none_outside_repo(temp_audit_dir):
 
     with mock.patch("audittrail.tracer.subprocess.run", side_effect=Exception("no git")):
         train()
+    audittrail.flush()
 
     entries = _read_entries(_log_path(temp_audit_dir))
     training_end = [e for e in entries if e["event_type"] == "training_end"][-1]
@@ -97,6 +102,7 @@ def test_human_review_flag_high_confidence(temp_audit_dir):
         return [0.9, 0.1]
 
     infer()
+    audittrail.flush()
     entries = _read_entries(_log_path(temp_audit_dir))
     inference_end = [e for e in entries if e["event_type"] == "inference_end"][-1]
     assert inference_end["data"]["human_review_required"] is True
@@ -108,6 +114,7 @@ def test_human_review_flag_low_confidence(temp_audit_dir):
         return [0.4, 0.1]
 
     infer()
+    audittrail.flush()
     entries = _read_entries(_log_path(temp_audit_dir))
     inference_end = [e for e in entries if e["event_type"] == "inference_end"][-1]
     assert inference_end["data"]["human_review_required"] is False

@@ -8,6 +8,8 @@ import subprocess
 import threading
 import uuid
 from typing import Any, Callable, Optional
+import queue
+import atexit
 
 import audittrail
 from audittrail import compliance
@@ -17,6 +19,49 @@ from audittrail.utils import integrity
 logger = logging.getLogger(__name__)
 _TLS = threading.local()
 _HASH_LOCK = threading.Lock()
+_LOG_QUEUE: "queue.Queue[dict | None]" = queue.Queue()
+_WORKER_STARTED = False
+_WORKER_LOCK = threading.Lock()
+
+
+def _log_worker() -> None:
+    while True:
+        item = _LOG_QUEUE.get()
+        if item is None:
+            _LOG_QUEUE.task_done()
+            break
+        try:
+            _write_log_entry_sync(item["event_type"], item["data"])
+        finally:
+            _LOG_QUEUE.task_done()
+
+
+def _ensure_worker_started() -> None:
+    global _WORKER_STARTED
+    if _WORKER_STARTED:
+        return
+    with _WORKER_LOCK:
+        if _WORKER_STARTED:
+            return
+        worker = threading.Thread(target=_log_worker, name="audittrail-log-writer", daemon=True)
+        worker.start()
+        _WORKER_STARTED = True
+
+
+def _shutdown_worker() -> None:
+    if not _WORKER_STARTED:
+        return
+    _LOG_QUEUE.put(None)
+    _LOG_QUEUE.join()
+
+
+def _flush_queue() -> None:
+    if not _WORKER_STARTED:
+        return
+    _LOG_QUEUE.join()
+
+
+atexit.register(_shutdown_worker)
 
 
 def _utc_iso() -> str:
@@ -75,7 +120,7 @@ def _max_confidence(output: Any) -> Optional[float]:
     return None
 
 
-def _write_log_entry(event_type: str, data: dict) -> None:
+def _write_log_entry_sync(event_type: str, data: dict) -> None:
     cfg = audittrail._get_config()
     timestamp = _utc_iso()
     payload = dict(data)
@@ -96,6 +141,11 @@ def _write_log_entry(event_type: str, data: dict) -> None:
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
         audittrail._set_previous_hash(entry_hash)
+
+
+def _write_log_entry(event_type: str, data: dict) -> None:
+    _ensure_worker_started()
+    _LOG_QUEUE.put({"event_type": event_type, "data": data})
 
 
 def trace_training(dataset_version: str, fairness_metrics: list | None = None) -> Callable:

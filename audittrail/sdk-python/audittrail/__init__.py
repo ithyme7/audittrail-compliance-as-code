@@ -75,4 +75,10 @@ def _set_previous_hash(value: str) -> None:
 
 from .tracer import trace_inference, trace_training  # noqa: E402
 
-__all__ = ["init", "trace_training", "trace_inference", "RiskLevel"]
+def flush() -> None:
+    from . import tracer as _tracer
+
+    _tracer._flush_queue()
+
+
+__all__ = ["init", "trace_training", "trace_inference", "RiskLevel", "flush"]
