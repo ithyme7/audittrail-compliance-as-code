@@ -119,6 +119,10 @@ For serverless or short‑lived processes, you can force sync writes:
 set AUDITTRAIL_MODE=sync
 ```
 
+Tuning (optional):
+- `AUDITTRAIL_BATCH_SIZE` (default 100)
+- `AUDITTRAIL_FLUSH_INTERVAL` seconds (default 0.5)
+
 ## Build Windows EXE
 
 From the repo root:

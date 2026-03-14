@@ -22,9 +22,38 @@ _HASH_LOCK = threading.Lock()
 _LOG_QUEUE: "queue.Queue[dict | None]" = queue.Queue()
 _WORKER_STARTED = False
 _WORKER_LOCK = threading.Lock()
-_MODE = os.getenv("AUDITTRAIL_MODE", "async").lower()
-_BATCH_SIZE = 100
-_FLUSH_INTERVAL = 0.5
+def _get_int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
+def _get_float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
+def _mode() -> str:
+    return os.getenv("AUDITTRAIL_MODE", "async").lower()
+
+
+def _batch_size() -> int:
+    return _get_int_env("AUDITTRAIL_BATCH_SIZE", 100)
+
+
+def _flush_interval() -> float:
+    return _get_float_env("AUDITTRAIL_FLUSH_INTERVAL", 0.5)
 
 
 def _write_log_entries_batch(entries: list[dict]) -> None:
@@ -61,7 +90,7 @@ def _log_worker() -> None:
     batch: list[dict] = []
     while True:
         try:
-            item = _LOG_QUEUE.get(timeout=_FLUSH_INTERVAL)
+            item = _LOG_QUEUE.get(timeout=_flush_interval())
             if item is None:
                 _LOG_QUEUE.task_done()
                 if batch:
@@ -74,7 +103,7 @@ def _log_worker() -> None:
         except queue.Empty:
             pass
 
-        if batch and (len(batch) >= _BATCH_SIZE or _LOG_QUEUE.empty()):
+        if batch and (len(batch) >= _batch_size() or _LOG_QUEUE.empty()):
             _write_log_entries_batch(batch)
             for _ in range(len(batch)):
                 _LOG_QUEUE.task_done()
@@ -83,6 +112,8 @@ def _log_worker() -> None:
 
 def _ensure_worker_started() -> None:
     global _WORKER_STARTED
+    if _mode() != "async":
+        return
     if _WORKER_STARTED:
         return
     with _WORKER_LOCK:
@@ -170,7 +201,7 @@ def _write_log_entry_sync(event_type: str, data: dict) -> None:
 
 
 def _write_log_entry(event_type: str, data: dict) -> None:
-    if _MODE == "sync":
+    if _mode() == "sync":
         _write_log_entry_sync(event_type, data)
         return
     _ensure_worker_started()
