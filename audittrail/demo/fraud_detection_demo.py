@@ -137,6 +137,7 @@ def main():
     print("- Compliance metrics computed and stored")
     print("- Audit log integrity verified")
     print("- Compliance report generated")
+    audittrail.flush()
 
 
 if __name__ == "__main__":

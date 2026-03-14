@@ -22,6 +22,7 @@ _HASH_LOCK = threading.Lock()
 _LOG_QUEUE: "queue.Queue[dict | None]" = queue.Queue()
 _WORKER_STARTED = False
 _WORKER_LOCK = threading.Lock()
+_MODE = os.getenv("AUDITTRAIL_MODE", "async").lower()
 
 
 def _log_worker() -> None:
@@ -144,6 +145,9 @@ def _write_log_entry_sync(event_type: str, data: dict) -> None:
 
 
 def _write_log_entry(event_type: str, data: dict) -> None:
+    if _MODE == "sync":
+        _write_log_entry_sync(event_type, data)
+        return
     _ensure_worker_started()
     _LOG_QUEUE.put({"event_type": event_type, "data": data})
 

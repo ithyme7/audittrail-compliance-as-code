@@ -61,6 +61,9 @@ Expected JSON structure (high level):
 ### `audittrail.init(project: str, risk_level: RiskLevel, output_dir: str = "./audit_logs")`
 Initializes global SDK state and log output location.
 
+### `audittrail.flush()`
+Flushes any pending async log events (recommended for short‑lived scripts).
+
 ### `@trace_training(dataset_version: str, fairness_metrics: list = None)`
 Decorates a training function and logs training lifecycle events.
 - `dataset_version` is required.
@@ -106,6 +109,15 @@ Expected output includes:
 - Human review count
 - Compliance report path
 - Audit chain integrity status
+
+## Async vs Sync logging
+
+By default, logging is async via a background worker thread.
+For serverless or short‑lived processes, you can force sync writes:
+
+```bash
+set AUDITTRAIL_MODE=sync
+```
 
 ## Build Windows EXE
 
