@@ -23,18 +23,62 @@ _LOG_QUEUE: "queue.Queue[dict | None]" = queue.Queue()
 _WORKER_STARTED = False
 _WORKER_LOCK = threading.Lock()
 _MODE = os.getenv("AUDITTRAIL_MODE", "async").lower()
+_BATCH_SIZE = 100
+_FLUSH_INTERVAL = 0.5
+
+
+def _write_log_entries_batch(entries: list[dict]) -> None:
+    if not entries:
+        return
+    cfg = audittrail._get_config()
+    log_path = os.path.join(cfg["output_dir"], f"{cfg['project']}_audit.log")
+    lines: list[str] = []
+    with _HASH_LOCK:
+        for item in entries:
+            event_type = item["event_type"]
+            data = item["data"]
+            timestamp = _utc_iso()
+            payload = dict(data)
+            trace_id = payload.pop("trace_id", None)
+            entry = {
+                "timestamp": timestamp,
+                "event_type": event_type,
+                "trace_id": trace_id,
+                "project": cfg["project"],
+                "data": payload,
+            }
+            previous_hash = audittrail._get_previous_hash()
+            entry_hash = integrity.hash_entry(entry, previous_hash)
+            entry["previous_hash"] = previous_hash
+            entry["hash"] = entry_hash
+            audittrail._set_previous_hash(entry_hash)
+            lines.append(json.dumps(entry) + "\n")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.writelines(lines)
 
 
 def _log_worker() -> None:
+    batch: list[dict] = []
     while True:
-        item = _LOG_QUEUE.get()
-        if item is None:
-            _LOG_QUEUE.task_done()
-            break
         try:
-            _write_log_entry_sync(item["event_type"], item["data"])
-        finally:
-            _LOG_QUEUE.task_done()
+            item = _LOG_QUEUE.get(timeout=_FLUSH_INTERVAL)
+            if item is None:
+                _LOG_QUEUE.task_done()
+                if batch:
+                    _write_log_entries_batch(batch)
+                    for _ in range(len(batch)):
+                        _LOG_QUEUE.task_done()
+                    batch.clear()
+                break
+            batch.append(item)
+        except queue.Empty:
+            pass
+
+        if batch and (len(batch) >= _BATCH_SIZE or _LOG_QUEUE.empty()):
+            _write_log_entries_batch(batch)
+            for _ in range(len(batch)):
+                _LOG_QUEUE.task_done()
+            batch.clear()
 
 
 def _ensure_worker_started() -> None:
@@ -122,26 +166,7 @@ def _max_confidence(output: Any) -> Optional[float]:
 
 
 def _write_log_entry_sync(event_type: str, data: dict) -> None:
-    cfg = audittrail._get_config()
-    timestamp = _utc_iso()
-    payload = dict(data)
-    trace_id = payload.pop("trace_id", None)
-    entry = {
-        "timestamp": timestamp,
-        "event_type": event_type,
-        "trace_id": trace_id,
-        "project": cfg["project"],
-        "data": payload,
-    }
-    log_path = os.path.join(cfg["output_dir"], f"{cfg['project']}_audit.log")
-    with _HASH_LOCK:
-        previous_hash = audittrail._get_previous_hash()
-        entry_hash = integrity.hash_entry(entry, previous_hash)
-        entry["previous_hash"] = previous_hash
-        entry["hash"] = entry_hash
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
-        audittrail._set_previous_hash(entry_hash)
+    _write_log_entries_batch([{"event_type": event_type, "data": data}])
 
 
 def _write_log_entry(event_type: str, data: dict) -> None:
