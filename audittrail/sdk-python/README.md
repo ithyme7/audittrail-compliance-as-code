@@ -121,6 +121,11 @@ Optional plot generation:
 ```bash
 pip install matplotlib
 ```
+
+Pitch-ready chart:
+```bash
+python generate_pitch_chart.py
+```
 ## Async vs Sync logging
 
 By default, logging is async via a background worker thread.
