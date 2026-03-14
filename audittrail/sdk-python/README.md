@@ -110,6 +110,17 @@ Expected output includes:
 - Compliance report path
 - Audit chain integrity status
 
+## Benchmark
+
+```bash
+cd demo
+python benchmark.py
+```
+
+Optional plot generation:
+```bash
+pip install matplotlib
+```
 ## Async vs Sync logging
 
 By default, logging is async via a background worker thread.
