@@ -3,6 +3,8 @@
 ![CI](https://github.com/ithyme7/audittrail-compliance-as-code/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)
 
+![Demo](assets/demo.gif)
+
 Compliance-as-Code SDK for EU AI Act readiness. This MVP traces training and inference, computes fairness metrics, and exports audit-ready reports.
 
 **Why AuditTrail**
