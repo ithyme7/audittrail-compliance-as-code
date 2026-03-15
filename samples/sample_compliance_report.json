@@ -1,0 +1,28 @@
+{
+  "project": "fraud-demo",
+  "generated_at": "2026-03-15T12:10:00Z",
+  "risk_level": "HIGH",
+  "traces": [
+    {
+      "trace_id": "trace-001",
+      "events": ["training_start", "training_end"],
+      "compliance_checks": {
+        "demographic_parity": {
+          "value": 0.02,
+          "threshold": 0.05,
+          "violates": false
+        }
+      }
+    },
+    {
+      "trace_id": "trace-002",
+      "events": ["inference_start", "inference_end"],
+      "compliance_checks": {}
+    }
+  ],
+  "summary": {
+    "total_traces": 2,
+    "total_events": 4,
+    "violations_found": 0
+  }
+}
