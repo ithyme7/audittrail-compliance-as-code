@@ -40,6 +40,10 @@ Dependencies:
 - `numpy` (core)
 - `scikit-learn` (demo)
 - `pytest` (tests)
+Optional extras:
+- `pip install -e ".[cloud]"` for S3/Azure exporters
+- `pip install -e ".[dashboard]"` for Streamlit dashboard
+- `pip install -e ".[pdf]"` for PDF export demo
 
 ## Quick Start
 
@@ -188,6 +192,31 @@ set AUDITTRAIL_MODE=sync
 Tuning (optional):
 - `AUDITTRAIL_BATCH_SIZE` (default 100)
 - `AUDITTRAIL_FLUSH_INTERVAL` seconds (default 0.5)
+
+## Cloud Exporters (S3 / Azure Blob)
+
+Send batched audit logs directly to object storage instead of local files:
+
+```bash
+set AUDITTRAIL_SINK=s3
+set AUDITTRAIL_S3_BUCKET=your-bucket-name
+set AUDITTRAIL_S3_PREFIX=audittrail
+```
+
+For Azure:
+
+```bash
+set AUDITTRAIL_SINK=azure
+set AUDITTRAIL_AZURE_CONNECTION_STRING=...
+set AUDITTRAIL_AZURE_CONTAINER=...
+set AUDITTRAIL_AZURE_PREFIX=audittrail
+```
+
+Install dependencies:
+
+```bash
+pip install -e ".[cloud]"
+```
 
 ## Build Windows EXE
 

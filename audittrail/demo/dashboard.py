@@ -18,6 +18,17 @@ def load_data(file_path: str):
     return traces
 
 
+def load_from_upload(uploaded_file):
+    traces = []
+    if uploaded_file is None:
+        return traces
+    content = uploaded_file.getvalue().decode("utf-8", errors="ignore")
+    for line in content.splitlines():
+        if line.strip():
+            traces.append(json.loads(line))
+    return traces
+
+
 def verify_integrity(traces) -> bool:
     if not traces:
         return False
@@ -33,11 +44,12 @@ st.title("🛡️ AuditTrail Compliance Dashboard")
 st.markdown("*Live inzicht in de EU AI Act compliance status van je modellen.*")
 
 st.sidebar.header("📁 Databron")
+uploaded = st.sidebar.file_uploader("Upload audit.log", type=["log", "txt"])
 log_file = st.sidebar.text_input(
-    "Pad naar audit.log", value="./demo_output/fraud-detection-demo_audit.log"
+    "Of pad naar audit.log", value="./demo_output/fraud-detection-demo_audit.log"
 )
 
-data = load_data(log_file)
+data = load_from_upload(uploaded) if uploaded is not None else load_data(log_file)
 
 if not data:
     st.warning(f"Geen data gevonden in {log_file}. Run eerst een demo!")

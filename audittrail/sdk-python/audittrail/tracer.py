@@ -22,6 +22,8 @@ _HASH_LOCK = threading.Lock()
 _LOG_QUEUE: "queue.Queue[dict | None]" = queue.Queue()
 _WORKER_STARTED = False
 _WORKER_LOCK = threading.Lock()
+
+
 def _get_int_env(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None:
@@ -56,11 +58,63 @@ def _flush_interval() -> float:
     return _get_float_env("AUDITTRAIL_FLUSH_INTERVAL", 0.5)
 
 
+def _sink() -> str:
+    return os.getenv("AUDITTRAIL_SINK", "local").lower()
+
+
+def _write_lines_local(lines: list[str]) -> None:
+    cfg = audittrail._get_config()
+    log_path = os.path.join(cfg["output_dir"], f"{cfg['project']}_audit.log")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.writelines(lines)
+
+
+def _write_lines_s3(lines: list[str]) -> None:
+    try:
+        import boto3
+    except Exception as exc:
+        raise RuntimeError("boto3 is required for AUDITTRAIL_SINK=s3") from exc
+
+    cfg = audittrail._get_config()
+    bucket = os.getenv("AUDITTRAIL_S3_BUCKET")
+    if not bucket:
+        raise RuntimeError("AUDITTRAIL_S3_BUCKET is required for AUDITTRAIL_SINK=s3")
+    prefix = os.getenv("AUDITTRAIL_S3_PREFIX", "audittrail")
+    ts = _utc_iso().replace(":", "").replace("+", "")
+    key = f"{prefix}/{cfg['project']}/{ts}_{uuid.uuid4().hex}.jsonl"
+    body = "".join(lines).encode("utf-8")
+
+    s3 = boto3.client("s3")
+    s3.put_object(Bucket=bucket, Key=key, Body=body)
+
+
+def _write_lines_azure(lines: list[str]) -> None:
+    try:
+        from azure.storage.blob import BlobServiceClient
+    except Exception as exc:
+        raise RuntimeError("azure-storage-blob is required for AUDITTRAIL_SINK=azure") from exc
+
+    cfg = audittrail._get_config()
+    conn_str = os.getenv("AUDITTRAIL_AZURE_CONNECTION_STRING")
+    container = os.getenv("AUDITTRAIL_AZURE_CONTAINER")
+    if not conn_str or not container:
+        raise RuntimeError(
+            "AUDITTRAIL_AZURE_CONNECTION_STRING and AUDITTRAIL_AZURE_CONTAINER are required for AUDITTRAIL_SINK=azure"
+        )
+    prefix = os.getenv("AUDITTRAIL_AZURE_PREFIX", "audittrail")
+    ts = _utc_iso().replace(":", "").replace("+", "")
+    blob_name = f"{prefix}/{cfg['project']}/{ts}_{uuid.uuid4().hex}.jsonl"
+    body = "".join(lines).encode("utf-8")
+
+    service = BlobServiceClient.from_connection_string(conn_str)
+    container_client = service.get_container_client(container)
+    container_client.upload_blob(name=blob_name, data=body, overwrite=True)
+
+
 def _write_log_entries_batch(entries: list[dict]) -> None:
     if not entries:
         return
     cfg = audittrail._get_config()
-    log_path = os.path.join(cfg["output_dir"], f"{cfg['project']}_audit.log")
     lines: list[str] = []
     with _HASH_LOCK:
         for item in entries:
@@ -82,8 +136,16 @@ def _write_log_entries_batch(entries: list[dict]) -> None:
             entry["hash"] = entry_hash
             audittrail._set_previous_hash(entry_hash)
             lines.append(json.dumps(entry) + "\n")
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.writelines(lines)
+        sink = _sink()
+        if sink == "local":
+            _write_lines_local(lines)
+        elif sink == "s3":
+            _write_lines_s3(lines)
+        elif sink in ("azure", "azure_blob", "blob"):
+            _write_lines_azure(lines)
+        else:
+            logger.warning("Unknown AUDITTRAIL_SINK '%s', defaulting to local", sink)
+            _write_lines_local(lines)
 
 
 def _log_worker() -> None:
@@ -94,7 +156,10 @@ def _log_worker() -> None:
             if item is None:
                 _LOG_QUEUE.task_done()
                 if batch:
-                    _write_log_entries_batch(batch)
+                    try:
+                        _write_log_entries_batch(batch)
+                    except Exception as exc:
+                        logger.error("Failed to write audit log batch: %s", exc)
                     for _ in range(len(batch)):
                         _LOG_QUEUE.task_done()
                     batch.clear()
@@ -104,7 +169,10 @@ def _log_worker() -> None:
             pass
 
         if batch and (len(batch) >= _batch_size() or _LOG_QUEUE.empty()):
-            _write_log_entries_batch(batch)
+            try:
+                _write_log_entries_batch(batch)
+            except Exception as exc:
+                logger.error("Failed to write audit log batch: %s", exc)
             for _ in range(len(batch)):
                 _LOG_QUEUE.task_done()
             batch.clear()
