@@ -17,6 +17,12 @@ exe = ["pyinstaller>=6.0"]
 [project.scripts]
 audittrail-cli = "audittrail.cli:main"
 
+[tool.setuptools]
+packages = ["audittrail", "audittrail.exporters", "audittrail.utils"]
+
+[tool.setuptools.package-data]
+audittrail = ["assets/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
