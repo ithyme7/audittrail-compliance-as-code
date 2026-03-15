@@ -16,6 +16,18 @@ Compliance-as-Code SDK for EU AI Act readiness. This MVP traces training and inf
 We’re looking for 2–3 teams building high‑risk AI systems in the EU.  
 If you want early access + roadmap influence, open a GitHub issue in this repo with a short intro.
 
+## What AuditTrail does not solve (yet)
+- Sector‑specific regulatory overlap (AI Act + MDR/financial rules)
+- High‑risk classification decisions (self‑assessment tooling)
+- Watermarking / content labeling at scale
+- Cross‑team workflow and approval hand‑offs
+
+## Roadmap (focus areas)
+- Sector templates + conformity checklists
+- Risk classification wizard
+- Audit‑ready PDF bundles
+- Integrations (cloud storage, API middleware)
+
 ## Installation
 
 Editable install from the repo:
